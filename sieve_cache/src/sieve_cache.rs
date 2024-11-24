@@ -1,16 +1,59 @@
+use std::collections::HashMap;
+use std::hash::Hash;
+
 use cache::SizeLimitedCache;
 
+struct Entry<Key, Value> {
+    data: Option<(Key, Value)>,
+    visited: bool,
+}
+
 pub struct SieveCache<Key, Value> {
-    /// This is a placeholder to allow the code to compile in a work-in-progress state.
-    /// You'll remove this field when you choose a data structure to hold the raw cache
-    /// values.
-    _phantom: std::marker::PhantomData<(Key, Value)>,
+    map: HashMap<Key, usize>,
+    data: Vec<Entry<Key, Value>>,
+    hand: usize,
 }
 
 impl<Key, Value> SieveCache<Key, Value> {
     pub fn new() -> Self {
+        let mut data = Vec::with_capacity(cache::MAX_SIZE);
+        for _ in 0..cache::MAX_SIZE {
+            data.push(Entry {
+                data: None,
+                visited: false,
+            });
+        }
+
         Self {
-            _phantom: std::marker::PhantomData,
+            data,
+            map: HashMap::default(),
+            hand: 0,
+        }
+    }
+}
+
+impl<Key, Value> SieveCache<Key, Value>
+where
+    Key: Eq + Hash,
+{
+    fn evict(&mut self) -> usize {
+        loop {
+            let current = self.hand;
+            self.hand += 1;
+            if self.hand >= self.data.len() {
+                self.hand = 0;
+            }
+
+            let entry = &mut self.data[current];
+            if std::mem::replace(&mut entry.visited, false) {
+                continue;
+            }
+
+            if let Some((key, _)) = entry.data.take() {
+                self.map.remove(&key);
+            }
+
+            return current;
         }
     }
 }
@@ -22,21 +65,26 @@ where
     Value: Clone,
 {
     fn get(&mut self, key: &Key) -> Option<Value> {
-        // These silence unused variable warnings. Delete them before you
-        // implement this method.
-        let _ = key;
+        let index = *self.map.get(key)?;
+        let entry = &mut self.data[index];
 
-        // todo!()
-        None
+        entry.visited = true;
+        let (_, value) = entry.data.as_ref()?;
+
+        Some(value.clone())
     }
 
     fn set(&mut self, key: Key, value: Value) {
-        // These silence unused variable warnings. Delete them before you
-        // implement this method.
-        let _ = key;
-        let _ = value;
+        if let Some(index) = self.map.get(&key) {
+            let entry = &mut self.data[*index];
+            entry.data = Some((key, value));
+            return;
+        }
 
-        // todo!()
+        let index = self.evict();
+        let entry = &mut self.data[index];
+        entry.data = Some((key.clone(), value));
+        self.map.insert(key, index);
     }
 }
 

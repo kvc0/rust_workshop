@@ -4,6 +4,7 @@ use kcache::{KCache, SharableKCache};
 use lru_cache::LruCache;
 use multi_thread_cache_test::benchmark_cache_multi_threaded;
 use pprof::criterion::{Output, PProfProfiler};
+use sieve_cache::ConcurrentSieveCache;
 use single_thread_cache_test::benchmark_cache_single_threaded;
 
 mod kcache;
@@ -69,6 +70,13 @@ fn multi_threaded_comparison(c: &mut Criterion) {
             &mut multi_thread_benchmark_group,
             thread_count,
             LruCache::new(),
+        );
+
+        benchmark_cache_multi_threaded(
+            BenchmarkId::new("concurrent_sieve", thread_count),
+            &mut multi_thread_benchmark_group,
+            thread_count,
+            ConcurrentSieveCache::new(),
         );
     }
 }

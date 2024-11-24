@@ -107,7 +107,7 @@ fn evict_skips_read_values() {
 #[test]
 fn evict_only_evicts_necessary_entries() {
     let mut cache = SieveCache::new();
-    
+
     // This should fill up the cache to the maximum size.
     for i in 0..cache::MAX_SIZE {
         cache.set(i, i);
